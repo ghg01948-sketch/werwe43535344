@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Access</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background-color: #fff;
+      color: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .card {
+      background: #f8f8f8;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 32px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    h2 {
+      font-weight: 600;
+      margin-bottom: 24px;
+      letter-spacing: 1px;
+    }
+
+    #passwordInput {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      font-family: inherit;
+      border: 1px solid #999;
+      border-radius: 4px;
+      background: #fff;
+      color: #000;
+      outline: none;
+      margin-bottom: 16px;
+    }
+
+    #passwordInput:focus {
+      border-color: #000;
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      background: #000;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #333;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Input Code:</h2>
+    <input type="password" id="passwordInput" placeholder="••••••••••••••••" autocomplete="off">
+    <button onclick="checkPassword()">Open</button>
+  </div>
+
+  <script>
+    function checkPassword() {
+      const input = document.getElementById('passwordInput').value;
+      const correctPassword = "SPDUSTSStwendRT"; // ← замените при необходимости
+
+      if (input === correctPassword) {
+        window.location.href = "inde.html";
+      } else {
+        document.getElementById('passwordInput').value = '';
+        document.getElementById('passwordInput').focus();
+        // Вместо alert — более элегантное поведение: лёгкая вибрация
+        const card = document.querySelector('.card');
+        card.style.animation = 'shake 0.4s';
+        setTimeout(() => card.style.animation = '', 400);
+      }
+    }
+
+    document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') checkPassword();
+    });
+
+    // CSS анимация для вибрации (добавим инлайном)
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-4px); }
+        75% { transform: translateX(4px); }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>

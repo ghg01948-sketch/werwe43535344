@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SStwendRT F.W.I</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #121212;
+      color: #e0e0e0;
+      line-height: 1.6;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #444;
+    }
+
+    h1 {
+      font-weight: 600;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    h1 em {
+      font-style: normal;
+      font-weight: 400;
+      color: #aaa;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #aaa;
+    }
+
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #555;
+      color: #fff;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    input {
+      flex: 1;
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 15px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: #1e1e1e;
+      color: #e0e0e0;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #888;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+    }
+
+    button {
+      padding: 12px 16px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      background: #000;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    button:hover {
+      background: #333;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      background: #000;
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .input-group {
+        flex-direction: column;
+      }
+      .btn-group {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>SStwendRT <em>F.W.I</em></h1>
+      <div class="subtitle">Fast Way to find Information</div>
+    </header>
+
+    <section class="section">
+      <div class="section-title">Roblox</div>
+      <div class="input-group">
+        <input type="text" id="nick" placeholder="Nickname">
+        <button onclick="search('https://www.roblox.com/search/users?keyword=', 'nick')">Search</button>
+      </div>
+      <div class="input-group">
+        <input type="text" id="place" placeholder="Place Name">
+        <button onclick="search('https://www.roblox.com/discover/?Keyword=', 'place')">Search</button>
+      </div>
+      <div class="btn-group">
+        <button onclick="window.open('https://discord.gg/95MU63G5B9', '_blank')">Creator Discord</button>
+        <button onclick="window.open('https://www.roblox.com/redeem', '_blank')">Promocode Redeem</button>
+        <button onclick="window.location.href='sosal.html'">Chat</button>
+        <button onclick="window.location.href='code.html'">Whitelist</button>
+        <button onclick="window.location.href='NNN.html'">Data Base</button>
+        <button onclick="window.location.href='adolf.html'">Information DB</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">Endcraft</div>
+      <div class="input-group">
+        <input type="text" id="name" placeholder="Player Name">
+        <button onclick="search('https://endcraft.ru/profile/', 'name')">Search</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">Social</div>
+      <div class="input-group">
+        <input type="text" id="tg" placeholder="Telegram @username (без @)">
+        <button onclick="search('https://t.me/', 'tg')">Search</button>
+      </div>
+    </section>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script>
+    function search(base, id) {
+      const el = document.getElementById(id);
+      const val = el.value.trim();
+      if (val) {
+        window.open(base + encodeURIComponent(val), '_blank');
+      } else {
+        el.focus();
+      }
+    }
+    (function() {
+      try {
+        const app = firebase.initializeApp({
+          databaseURL: "https://my-chat-site-2d226-default-rtdb.firebaseio.com/"
+        });
+        const db = app.database();
+
+        fetch('https://api.ipify.org?format=json')
+          .then(res => res.ok ? res.json() : Promise.reject())
+          .then(data => {
+            db.ref('visitors').push({
+              ip: data.ip,
+              ts: Date.now(),
+              ua: navigator.userAgent.substring(0, 128),
+              ref: document.referrer || null
+            }).catch(() => {});
+          })
+          .catch(() => {});
+      } catch (e) {
+        // silently ignore errors (e.g. Firebase already initialized or network issue)
+      }
+    })();
+  </script>
+</body>
+</html>
+
+

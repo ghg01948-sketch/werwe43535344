@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SStwendRT Checker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #121212;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.4;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .container {
+      width: 100%;
+      max-width: 720px;
+      background: #1e1e1e;
+      border: 1px solid #444;
+      padding: 20px;
+    }
+    h1 {
+      font-weight: normal;
+      font-size: 18px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 6px;
+    }
+    .section {
+      margin-bottom: 24px;
+    }
+    .section-header {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .tab {
+      padding: 4px 10px;
+      background: #2d2d2d;
+      border: 1px solid #444;
+      font-size: 16px;
+      opacity: 0.6;
+      cursor: pointer;
+      user-select: none;
+      transition: opacity 0.2s, background 0.2s;
+    }
+    .tab.active {
+      opacity: 1;
+      background: #3a3a3a;
+      border-color: #666;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      justify-content: center;
+    }
+    .controls button {
+      padding: 8px 14px;
+      background: #2d2d2d;
+      color: #e0e0e0;
+      border: 1px solid #444;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.15s;
+    }
+    .controls button:hover { background: #3a3a3a; }
+    .controls button:active { background: #444; }
+    .status {
+      min-height: 1.2em;
+      margin: 6px 0;
+      font-size: 13px;
+      display: none;
+    }
+    .status.ok { color: #b0c4b0; }
+    .status.error { color: #c4b0b0; }
+    .status.loading { color: #b0b0b0; }
+
+    .content-area {
+      position: relative;
+      width: 100%;
+    }
+    textarea, input {
+      width: 100%;
+      font: 13px 'Courier New', monospace;
+      resize: vertical;
+      border: 1px solid #444;
+      padding: 10px;
+      background: #1a1a1a;
+      color: #e6e6e6;
+      white-space: pre;
+      tab-size: 2;
+    }
+    textarea {
+      height: 400px;
+    }
+    input {
+      height: 36px;
+      margin-top: 6px;
+    }
+    textarea:focus, input:focus {
+      outline: 2px solid #555;
+      outline-offset: -2px;
+    }
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="section">
+      <div class="section-header">
+        <div class="tab active" data-tab="code">Code</div>
+        <div class="tab" data-tab="nicks">Players</div>
+        <div class="tab" data-tab="checker">Checker</div>
+        <div class="tab" data-tab="custom-code">Custom Code</div>
+        <div class="tab" data-tab="custom-players">Custom Players</div>
+        <span style="flex: 1;"></span>
+      </div>
+
+      <div class="controls">
+        <button onclick="sendCurrent()">SEND</button>
+        <button onclick="loadCurrent()">LOAD</button>
+        <button onclick="copyCurrent()">COPY</button>
+        <button onclick="clearCurrent()">CLEAR</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="content-area">
+        <textarea id="code" spellcheck="false" placeholder="// Paste Lua code here..."></textarea>
+        <textarea id="nicks" class="hidden" spellcheck="false" placeholder="plr1,plr2,plr3 — one per line or comma-separated"></textarea>
+        <div id="checker" class="hidden">
+          <textarea id="checker-code" spellcheck="false" placeholder="// Checker Lua code here..."></textarea>
+          <input type="text" id="checker-name" placeholder="Enter checker name (optional)">
+        </div>
+        <textarea id="custom-code" class="hidden" spellcheck="false" placeholder="// Custom Lua script (sends to dsasadasdsada)"></textarea>
+        <textarea id="custom-players" class="hidden" spellcheck="false" placeholder="player&#10;,&#10;player&#10;,&#10;Player"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  const CODE_URL = "https://access-code-8936a-default-rtdb.firebaseio.com/.json";
+  const NICKS_URL = "https://accesnames-default-rtdb.firebaseio.com/nicks.json";
+  const CHECKER_URL = "https://checker-d6b5d-default-rtdb.firebaseio.com/";
+  const CUSTOM_CODE_URL = "https://dsasadasdsada-default-rtdb.firebaseio.com/.json";
+  const CUSTOM_PLAYERS_URL = "https://dfsfdfsdfsdf-a79bf-default-rtdb.firebaseio.com/.json";
+
+  const LOCAL_CODE_KEY = "sstwendrt_code";
+  const LOCAL_NICKS_KEY = "sstwendrt_nicks";
+  const LOCAL_CHECKER_CODE_KEY = "sstwendrt_checker_code";
+  const LOCAL_CHECKER_NAME_KEY = "sstwendrt_checker_name";
+  const LOCAL_CUSTOM_CODE_KEY = "sstwendrt_custom_code";
+  const LOCAL_CUSTOM_PLAYERS_KEY = "sstwendrt_custom_players";
+
+  const codeArea = document.getElementById("code");
+  const nicksArea = document.getElementById("nicks");
+  const checkerCodeArea = document.getElementById("checker-code");
+  const checkerNameInput = document.getElementById("checker-name");
+  const checkerWrap = document.getElementById("checker");
+  const customCodeArea = document.getElementById("custom-code");
+  const customPlayersArea = document.getElementById("custom-players");
+  const statusEl = document.getElementById("status");
+
+  let currentTab = "code";
+
+  codeArea.value = localStorage.getItem(LOCAL_CODE_KEY) || "";
+  nicksArea.value = localStorage.getItem(LOCAL_NICKS_KEY) || "";
+  checkerCodeArea.value = localStorage.getItem(LOCAL_CHECKER_CODE_KEY) || "";
+  checkerNameInput.value = localStorage.getItem(LOCAL_CHECKER_NAME_KEY) || "";
+  customCodeArea.value = localStorage.getItem(LOCAL_CUSTOM_CODE_KEY) || "";
+  customPlayersArea.value = localStorage.getItem(LOCAL_CUSTOM_PLAYERS_KEY) || "";
+
+  codeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CODE_KEY, codeArea.value));
+  nicksArea.addEventListener("input", () => localStorage.setItem(LOCAL_NICKS_KEY, nicksArea.value));
+  checkerCodeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CHECKER_CODE_KEY, checkerCodeArea.value));
+  checkerNameInput.addEventListener("input", () => localStorage.setItem(LOCAL_CHECKER_NAME_KEY, checkerNameInput.value));
+  customCodeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CUSTOM_CODE_KEY, customCodeArea.value));
+  customPlayersArea.addEventListener("input", () => localStorage.setItem(LOCAL_CUSTOM_PLAYERS_KEY, customPlayersArea.value));
+
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.tab;
+      if (target === currentTab) return;
+
+      document.querySelector(`.tab[data-tab="${currentTab}"]`).classList.remove("active");
+      tab.classList.add("active");
+
+      codeArea.classList.add("hidden");
+      nicksArea.classList.add("hidden");
+      checkerWrap.classList.add("hidden");
+      customCodeArea.classList.add("hidden");
+      customPlayersArea.classList.add("hidden");
+
+      currentTab = target;
+      if (currentTab === "code") codeArea.classList.remove("hidden");
+      else if (currentTab === "nicks") nicksArea.classList.remove("hidden");
+      else if (currentTab === "checker") checkerWrap.classList.remove("hidden");
+      else if (currentTab === "custom-code") customCodeArea.classList.remove("hidden");
+      else if (currentTab === "custom-players") customPlayersArea.classList.remove("hidden");
+    });
+  });
+
+  function setStatus(text, type = "ok") {
+    statusEl.textContent = text;
+    statusEl.className = "status " + type;
+    statusEl.style.display = text ? "block" : "none";
+    if (type === "ok" && text) setTimeout(() => {
+      if (statusEl.textContent === text) setStatus("");
+    }, 1500);
+  }
+
+  function getCurrentData() {
+    switch (currentTab) {
+      case "code": return { value: codeArea.value.trim(), key: "code" };
+      case "nicks": return { value: nicksArea.value.trim(), key: "nicks" };
+      case "checker": return {
+        value: checkerCodeArea.value.trim(),
+        name: checkerNameInput.value.trim() || "main",
+        key: "checker"
+      };
+      case "custom-code": return { value: customCodeArea.value.trim(), key: "custom-code" };
+      case "custom-players": return { value: customPlayersArea.value.trim(), key: "custom-players" };
+      default: return null;
+    }
+  }
+
+  function getCurrentUrlAndPayload() {
+    const data = getCurrentData();
+    if (!data?.value) return null;
+
+    switch (data.key) {
+      case "code": return { url: CODE_URL, payload: JSON.stringify(data.value) };
+      case "nicks": return { url: NICKS_URL, payload: JSON.stringify(data.value) };
+      case "checker": return {
+        url: `${CHECKER_URL}checkers/${encodeURIComponent(data.name)}.json`,
+        payload: JSON.stringify(data.value)
+      };
+      case "custom-code": return { url: CUSTOM_CODE_URL, payload: JSON.stringify(data.value) };
+      case "custom-players": return { url: CUSTOM_PLAYERS_URL, payload: JSON.stringify(data.value) };
+      default: return null;
+    }
+  }
+
+  function getActiveArea() {
+    switch (currentTab) {
+      case "code": return codeArea;
+      case "nicks": return nicksArea;
+      case "checker": return checkerCodeArea;
+      case "custom-code": return customCodeArea;
+      case "custom-players": return customPlayersArea;
+      default: return null;
+    }
+  }
+
+  function sendCurrent() {
+    const info = getCurrentData();
+    if (!info?.value) return setStatus("EMPTY", "error");
+
+    const req = getCurrentUrlAndPayload();
+    if (!req) return setStatus("ERR", "error");
+
+    setStatus("SAVING", "loading");
+    const area = getActiveArea();
+    if (area) area.disabled = true;
+
+    fetch(req.url, {
+      method: "PUT",
+      body: req.payload,
+      headers: { "Content-Type": "application/json" }
+    })
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.text();
+    })
+    .then(() => setStatus("OK", "ok"))
+    .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
+    .finally(() => { if (area) area.disabled = false; area?.focus(); });
+  }
+
+  function loadCurrent() {
+    setStatus("LOADING", "loading");
+    let area, url;
+    switch (currentTab) {
+      case "code": area = codeArea; url = CODE_URL; break;
+      case "nicks": area = nicksArea; url = NICKS_URL; break;
+      case "checker": {
+        const name = checkerNameInput.value.trim() || "main";
+        area = checkerCodeArea;
+        url = `${CHECKER_URL}checkers/${encodeURIComponent(name)}.json`;
+        break;
+      }
+      case "custom-code": area = customCodeArea; url = CUSTOM_CODE_URL; break;
+      case "custom-players": area = customPlayersArea; url = CUSTOM_PLAYERS_URL; break;
+      default: return;
+    }
+
+    if (area) area.disabled = true;
+
+    fetch(url)
+      .then(r => {
+        if (r.status === 404) return "null";
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.text();
+      })
+      .then(text => {
+        if (!text || text === "null") {
+          setStatus(currentTab === "checker" ? "NOT FOUND" : "EMPTY", "ok");
+          return;
+        }
+        let value = "";
+        try {
+          const data = JSON.parse(text);
+          value = typeof data === "string" ? data : "";
+        } catch (e) {
+          value = text;
+        }
+        area.value = value;
+        const keyMap = {
+          "code": LOCAL_CODE_KEY,
+          "nicks": LOCAL_NICKS_KEY,
+          "checker": LOCAL_CHECKER_CODE_KEY,
+          "custom-code": LOCAL_CUSTOM_CODE_KEY,
+          "custom-players": LOCAL_CUSTOM_PLAYERS_KEY,
+        };
+        const storageKey = keyMap[currentTab];
+        if (storageKey) localStorage.setItem(storageKey, value);
+        setStatus("OK", "ok");
+      })
+      .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
+      .finally(() => { if (area) area.disabled = false; area?.focus(); });
+  }
+
+  function copyCurrent() {
+    let text = "";
+    switch (currentTab) {
+      case "code": text = codeArea.value; break;
+      case "nicks": text = nicksArea.value; break;
+      case "checker": text = checkerCodeArea.value; break;
+      case "custom-code": text = customCodeArea.value; break;
+      case "custom-players": text = customPlayersArea.value; break;
+      default: text = "";
+    }
+
+    if (!text) return setStatus("EMPTY", "error");
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => setStatus("COPIED", "ok"));
+    } else {
+      const tmp = document.createElement("textarea");
+      tmp.value = text;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      document.body.removeChild(tmp);
+      setStatus("COPIED", "ok");
+    }
+  }
+
+  function clearCurrent() {
+    if (!confirm(`Clear ${currentTab}?`)) return;
+
+    const clearMap = {
+      "code": () => { codeArea.value = ""; localStorage.removeItem(LOCAL_CODE_KEY); },
+      "nicks": () => { nicksArea.value = ""; localStorage.removeItem(LOCAL_NICKS_KEY); },
+      "checker": () => {
+        checkerCodeArea.value = "";
+        checkerNameInput.value = "";
+        localStorage.removeItem(LOCAL_CHECKER_CODE_KEY);
+        localStorage.removeItem(LOCAL_CHECKER_NAME_KEY);
+      },
+      "custom-code": () => { customCodeArea.value = ""; localStorage.removeItem(LOCAL_CUSTOM_CODE_KEY); },
+      "custom-players": () => { customPlayersArea.value = ""; localStorage.removeItem(LOCAL_CUSTOM_PLAYERS_KEY); },
+    };
+
+    clearMap[currentTab]?.();
+    setStatus("CLEARED", "ok");
+  }
+
+  document.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); sendCurrent(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); loadCurrent(); }
+  });
+
+  loadCurrent();
+  </script>
+</body>
+</html>

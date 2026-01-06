@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Whitelist</title>
+  <style>
+    body { font: 16px sans-serif; max-width: 500px; margin: 40px auto; }
+    input { padding: 10px; margin: 5px 0; width: 100%; }
+    button { padding: 5px 8px; font-size: 18px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>S.P.I</h2>
+  <input id="dis" placeholder="Discord Name" />
+  <input id="rob" placeholder="Roblox Name" />
+  <button id="send">Send Data</button>
+  <p id="status"></p>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+  <script>
+    // Инициализация Firebase
+    const app = firebase.initializeApp({
+      databaseURL: "https://my-chat-site-2d226-default-rtdb.firebaseio.com/"
+    });
+    const db = firebase.database();
+
+    const dis = document.getElementById('dis');
+    const rob = document.getElementById('rob');
+    const sendBtn = document.getElementById('send');
+    const status = document.getElementById('status');
+
+    sendBtn.onclick = () => {
+      const discord = dis.value.trim();
+      const roblox = rob.value.trim();
+
+      if (!discord || !roblox) {
+        status.textContent = "Input All Information Before Click";
+        return;
+      }
+
+      // Отправляем в базу
+      db.ref('Whitelisted Peoples').push({
+        discord: discord,
+        roblox: roblox,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+      }).then(() => {
+        status.textContent = "Saved";
+        dis.value = '';
+        rob.value = '';
+      }).catch(err => {
+        status.textContent = "Error:" + err.message;
+      });
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Information Data Base</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background-color: #121212; /* Almost black */
+      color: #e0e0e0; /* Soft white for readability */
+      padding: 30px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    #counter {
+      background: #000;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: 600;
+      border: 1px solid #333;
+    }
+
+    h1 {
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    #userInput {
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 16px;
+      border: 2px solid #444;
+      border-radius: 8px;
+      outline: none;
+      background: #1e1e1e;
+      color: #f0f0f0;
+      caret-color: #fff;
+    }
+
+    #userInput:focus {
+      border-color: #fff;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+    }
+
+    #addBtn {
+      background: #000;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    #addBtn:hover {
+      background: #222;
+      border-color: #555;
+    }
+
+    #addBtn:active {
+      background: #000;
+      transform: scale(0.98);
+    }
+
+    .notes-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .note-item {
+      background: #1a1a1a;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: fadeIn 0.3s ease-out;
+      word-break: break-word;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .note-text {
+      flex: 1;
+      font-size: 16px;
+      color: #e0e0e0;
+      padding-right: 12px;
+      line-height: 1.5;
+    }
+
+    .note-delete {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #aaa;
+      font-size: 18px;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .note-delete:hover {
+      background: #3a3a3a;
+      color: #fff;
+      border-color: #666;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #777;
+      padding: 30px;
+      font-style: italic;
+      border: 1px dashed #333;
+      border-radius: 8px;
+      background: #161616;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span id="counter">0</span>
+      <h1>Information:</h1>
+    </div>
+    <div class="input-group">
+      <input type="text" id="userInput" placeholder=". . .">
+      <button id="addBtn">Add</button>
+    </div>
+    <ul id="notesList" class="notes-list">
+    </ul>
+  </div>
+  <script>
+    const input = document.getElementById('userInput');
+    const addBtn = document.getElementById('addBtn');
+    const notesList = document.getElementById('notesList');
+    const counter = document.getElementById('counter');
+    let notes = JSON.parse(localStorage.getItem('savedNotes')) || [];
+
+    function updateCounter() {
+      counter.textContent = notes.length;
+    }
+
+    function addNote() {
+      const text = input.value.trim();
+      if (text === '') return;
+      notes.push(text);
+      localStorage.setItem('savedNotes', JSON.stringify(notes));
+      input.value = '';
+      input.focus();
+      renderNotes();
+      updateCounter();
+    }
+
+    function renderNotes() {
+      if (notes.length === 0) {
+        notesList.innerHTML = '<li class="empty-state">Nothing There</li>';
+        return;
+      }
+      notesList.innerHTML = '';
+      notes.forEach((note, index) => {
+        const li = document.createElement('li');
+        li.className = 'note-item';
+        // Escape HTML for safety
+        const safeText = note
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+        li.innerHTML = `
+          <span class="note-text">${safeText}</span>
+          <button class="note-delete" data-index="${index}" aria-label="Delete note">🗑️</button>
+        `;
+        notesList.appendChild(li);
+      });
+      document.querySelectorAll('.note-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.dataset.index, 10);
+          notes.splice(index, 1);
+          localStorage.setItem('savedNotes', JSON.stringify(notes));
+          renderNotes();
+          updateCounter();
+        });
+      });
+    }
+
+    addBtn.addEventListener('click', addNote);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addNote();
+    });
+
+    renderNotes();
+    updateCounter();
+  </script>
+</body>
+</html>

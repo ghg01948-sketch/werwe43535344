@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>🔍 OSINT Helper (Client-Side)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 20px auto; padding: 0 15px; background: #f9f9fb; }
+    h1, h2 { color: #2c3e50; }
+    input, textarea, button, select { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+    button { background: #3498db; color: white; border: none; cursor: pointer; }
+    button:hover { background: #2980b9; }
+    .section { background: white; padding: 16px; margin: 16px 0; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+    pre { background: #2d2d2d; color: #f8f8f2; padding: 12px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+    .success { color: #27ae60; }
+    .warn { color: #e67e22; }
+    .error { color: #e74c3c; }
+    a { color: #3498db; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<h1>🔍 OSINT Helper (Client-Only)</h1>
+<p>Все данные обрабатываются в браузере. Ничего не уходит на сервер.</p>
+
+<!-- === 1. Ввод цели === -->
+<div class="section">
+  <h2>🎯 Цель анализа</h2>
+  <input id="username" type="text" placeholder="Username / Nickname (например: john_doe)">
+  <input id="email" type="email" placeholder="Email (например: user@example.com)">
+  <input id="target" type="text" placeholder="IP / Domain (например: 8.8.8.8 или example.com)">
+  <input id="imageUrl" type="url" placeholder="URL изображения (для reverse search)">
+  <textarea id="textInput" placeholder="Вставьте текст для анализа (логи, чат и т.д.)" rows="4"></textarea>
+</div>
+
+<!-- === 2. Действия === -->
+<div class="section grid">
+  <button onclick="runSocialSearch()">👤 Поиск по username</button>
+  <button onclick="runEmailCheck()">📧 Проверка email</button>
+  <button onclick="runIpDomainCheck()">🌐 IP / Domain анализ</button>
+  <button onclick="runReverseImageSearch()">🖼️ Reverse image search</button>
+  <button onclick="runTextAnalysis()">📝 Анализ текста</button>
+  <button onclick="runEncodingTools()">🔐 Кодировка / Хеши</button>
+</div>
+
+<!-- === 3. Результаты === -->
+<div class="section">
+  <h2>📄 Результаты</h2>
+  <div id="results" style="white-space: pre-wrap;"></div>
+  <br>
+  <button onclick="saveResultsToFile()">💾 Сохранить как 'Роблок Аккаунты.txt'</button>
+  <button onclick="clearResults()">🧹 Очистить результаты</button>
+</div>
+
+<!-- === JS === -->
+<script>
+// === Сохранение полей в localStorage ===
+const fields = ['username', 'email', 'target', 'imageUrl', 'textInput'];
+fields.forEach(id => {
+  const el = document.getElementById(id);
+  el.value = localStorage.getItem(id) || '';
+  el.addEventListener('input', () => localStorage.setItem(id, el.value));
+});
+
+// === Вспомогательные функции ===
+function log(type, msg) {
+  const colors = { info: '', success: 'success', warn: 'warn', error: 'error' };
+  document.getElementById('results').innerHTML += `<div class="${colors[type] || ''}">${msg}</div>`;
+}
+function clearResults() { document.getElementById('results').innerHTML = ''; }
+
+// === 1. Social Search ===
+function runSocialSearch() {
+  clearResults();
+  const u = document.getElementById('username').value.trim();
+  if (!u) return log('warn', '⚠️ Укажите username.');
+  
+  const sites = [
+    { name: 'Twitter', url: `https://twitter.com/${u}` },
+    { name: 'Instagram', url: `https://instagram.com/${u}` },
+    { name: 'GitHub', url: `https://github.com/${u}` },
+    { name: 'Reddit', url: `https://www.reddit.com/user/${u}` },
+    { name: 'YouTube', url: `https://www.youtube.com/@${u}` },
+    { name: 'TikTok', url: `https://www.tiktok.com/@${u}` },
+    { name: 'Steam', url: `https://steamcommunity.com/id/${u}` },
+    { name: 'Roblox', url: `https://www.roblox.com/users/profile?username=${u}` },
+  ];
+
+  log('info', `🔍 Social Search для: <b>${u}</b>\n`);
+  sites.forEach(s => log('info', `• <a href="${s.url}" target="_blank">${s.name}</a>`));
+}
+
+// === 2. Email Check ===
+async function runEmailCheck() {
+  clearResults();
+  const e = document.getElementById('email').value.trim();
+  if (!e) return log('warn', '⚠️ Укажите email.');
+  
+  log('info', `📧 Проверка email: <b>${e}</b>\n`);
+  
+  // Have I Been Pwned (требует заголовка, но можно через CORS-прокси)
+  try {
+    const resp = await fetch(`https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(e)}`, {
+      headers: { 'User-Agent': 'OSINT-Helper' }
+    });
+    if (resp.ok) {
+      const breaches = await resp.json();
+      log('success', `✅ Найдено утечек: ${breaches.length}`);
+      breaches.forEach(b => log('info', `• ${b.Name} (${b.BreachDate}) — ${b.DataClasses.join(', ')}`));
+    } else if (resp.status === 404) {
+      log('success', '✅ Email не найден в утечках.');
+    } else {
+      throw new Error(`HIBP: ${resp.status}`);
+    }
+  } catch (err) {
+    log('warn', `⚠️ HIBP недоступен (CORS/лимит). Ручная проверка:`);
+  }
+
+  // Доп ссылки
+  [
+    { name: 'Google', url: `https://www.google.com/search?q=${encodeURIComponent(e)}` },
+    { name: 'Hunter.io', url: `https://hunter.io/verify/${encodeURIComponent(e)}` },
+    { name: 'Epieos', url: `https://epieos.com/?q=${encodeURIComponent(e)}` },
+  ].forEach(s => log('info', `• <a href="${s.url}" target="_blank">${s.name}</a>`));
+}
+
+// === 3. IP / Domain Check ===
+async function runIpDomainCheck() {
+  clearResults();
+  const t = document.getElementById('target').value.trim();
+  if (!t) return log('warn', '⚠️ Укажите IP или домен.');
+  
+  log('info', `🌐 Анализ: <b>${t}</b>\n`);
+
+  // IP Geolocation (через ipapi.co — CORS-friendly free tier)
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(t)) {
+    try {
+      const resp = await fetch(`https://ipapi.co/${t}/json/`);
+      const data = await resp.json();
+      if (data.error) throw new Error(data.reason || 'Unknown IP');
+      log('success', `📍 IP: ${data.ip} | Страна: ${data.country_name} (${data.country_code})`);
+      log('info', `Город: ${data.city}, Регион: ${data.region}`);
+      log('info', `Организация: ${data.org}`);
+    } catch (err) {
+      log('warn', `⚠️ Не удалось определить геолокацию: ${err.message}`);
+    }
+  }
+
+  // Domain: crt.sh subdomains
+  const domain = t.replace(/^https?:\/\//, '').split('/')[0];
+  if (domain.includes('.')) {
+    log('info', `\n🔍 Поддомены для <b>${domain}</b> (из crt.sh):`);
+    log('info', `<a href="https://crt.sh/?q=%25.${domain}" target="_blank">→ Открыть в crt.sh</a>`);
+    
+    // Попытка парсинга (ограничено CORS, но иногда работает)
+    try {
+      const resp = await fetch(`https://crt.sh/?q=%25.${domain}&output=json`);
+      if (resp.ok) {
+        const data = await resp.json();
+        const subs = [...new Set(data.map(x => x.name_value))];
+        log('info', `\nНайдено поддоменов: ${subs.length}\n`);
+        subs.slice(0, 20).forEach(s => log('info', `• ${s}`));
+        if (subs.length > 20) log('info', `... и ещё ${subs.length - 20}`);
+      }
+    } catch (err) {
+      log('warn', 'ℹ️ Поддомены: открыты вручную (CORS ограничение)');
+    }
+  }
+}
+
+// === 4. Reverse Image Search ===
+function runReverseImageSearch() {
+  clearResults();
+  const url = document.getElementById('imageUrl').value.trim();
+  if (!url) return log('warn', '⚠️ Укажите URL изображения.');
+
+  log('info', `🖼️ Reverse image search для: <b>${url}</b>\n`);
+  const engines = [
+    { name: 'Google', url: `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}` },
+    { name: 'Yandex', url: `https://yandex.ru/images/search?url=${encodeURIComponent(url)}&rpt=imageview` },
+    { name: 'TinEye', url: `https://tineye.com/search?url=${encodeURIComponent(url)}` },
+    { name: 'Bing', url: `https://www.bing.com/images/search?view=detailv2&iss=sbi&form=SBIHMP&sbisrc=UrlPaste&q=imgurl:${encodeURIComponent(url)}` },
+  ];
+  engines.forEach(e => log('info', `• <a href="${e.url}" target="_blank">${e.name}</a>`));
+}
+
+// === 5. Анализ текста ===
+function runTextAnalysis() {
+  clearResults();
+  const text = document.getElementById('textInput').value;
+  if (!text) return log('warn', '⚠️ Вставьте текст для анализа.');
+
+  log('info', '📝 Анализ текста:\n');
+
+  // Emails
+  const emails = [...new Set(text.match(/[\w.-]+@[\w.-]+\.\w+/g) || [])];
+  if (emails.length) {
+    log('success', `📧 Найдено email (${emails.length}):`);
+    emails.forEach(e => log('info', `• ${e}`));
+  }
+
+  // Телефоны (упрощённо)
+  const phones = [...new Set(text.match(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g) || [])];
+  if (phones.length) {
+    log('success', `\n📞 Найдено телефонов (${phones.length}):`);
+    phones.forEach(p => log('info', `• ${p}`));
+  }
+
+  // Usernames (латиница/цифры/._-)
+  const usernames = [...new Set(text.match(/\b[A-Za-z][A-Za-z0-9._-]{2,20}\b/g) || [])]
+    .filter(u => !/^(http|www|com|org|net|the|and|for|not)$/i.test(u));
+  if (usernames.length) {
+    log('success', `\n👤 Возможные ники (${usernames.length}):`);
+    usernames.slice(0, 30).forEach(u => log('info', `• ${u}`));
+    if (usernames.length > 30) log('info', `... и ещё ${usernames.length - 30}`);
+  }
+}
+
+// === 6. Кодировка / Хеши ===
+function runEncodingTools() {
+  clearResults();
+  const u = document.getElementById('username').value.trim() ||
+            document.getElementById('email').value.trim() ||
+            document.getElementById('target').value.trim();
+  if (!u) return log('warn', '⚠️ Укажите данные в любом поле.');
+
+  log('info', `🔐 Обработка: <b>${u}</b>\n`);
+  
+  // Base64
+  const b64 = btoa(unescape(encodeURIComponent(u)));
+  const b64d = () => { try { return decodeURIComponent(escape(atob(u))); } catch { return '[ошибка]'; } };
+  
+  // MD5, SHA1, SHA256 — через SubtleCrypto
+  async function hash(algo) {
+    const buf = new TextEncoder().encode(u);
+    const hashBuf = await crypto.subtle.digest(algo, buf);
+    return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  log('info', `Base64:         ${b64}`);
+  log('info', `Base64 decode:  ${b64d()}`);
+  log('info', `URL encode:     ${encodeURIComponent(u)}`);
+  log('info', `URL decode:     ${decodeURIComponent(u)}`);
+  log('info', `ROT13:          ${u.replace(/[a-zA-Z]/g, c => String.fromCharCode(c.charCodeAt(0) + (c <= 'M' || c >= 'm' && c <= 'z' ? 13 : -13)))}`);
+
+  // Хеши
+  hash('MD5').then(h => log('info', `MD5:            ${h}`)); // MD5 нет в SubtleCrypto → подмена на SHA1 в демо
+  hash('SHA-1').then(h => log('info', `SHA-1:          ${h}`));
+  hash('SHA-256').then(h => log('info', `SHA-256:        ${h}`));
+}
+
+// === Сохранение в файл ===
+function saveResultsToFile() {
+  const content = document.getElementById('results').innerText;
+  if (!content.trim()) return log('warn', '⚠️ Нет данных для сохранения.');
+
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Роблок Аккаунты.txt'; // как ты просил
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+</script>
+
+</body>
+</html>

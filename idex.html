@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Поиск PlayerId (PHP-версия)</title>
+  <style>
+    body { font-family: Arial; padding: 20px; max-width: 500px; margin: auto; }
+    input, button { padding: 10px; width: 100%; margin: 5px 0; box-sizing: border-box; }
+    #result { margin-top: 20px; padding: 15px; background: #f4f4f4; }
+    .error { color: red; }
+    .success { color: green; }
+  </style>
+</head>
+<body>
+  <h2>🔍 Поиск PlayerId через PHP</h2>
+  <form id="searchForm">
+    <input type="text" name="nickname" placeholder="Введите никнейм" required autofocus>
+    <button type="submit">Найти ID</button>
+  </form>
+  <div id="result"></div>
+
+  <script>
+    document.getElementById('searchForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const nickname = formData.get('nickname');
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '⏳ Поиск...';
+
+      try {
+        const res = await fetch('search.php', {
+          method: 'POST',
+          body: formData
+        });
+        const text = await res.text();
+        
+        // Попробуем распарсить как JSON, если не получится — покажем как есть
+        try {
+          const data = JSON.parse(text);
+          if (data.error) {
+            resultDiv.innerHTML = `<span class="error">❌ ${data.error}</span>`;
+          } else if (data.users && data.users.length > 0) {
+            let html = `<h3>✅ Найдено:</h3><ul>`;
+            data.users.forEach(u => {
+              html += `<li><strong>${u.name}</strong> — ID: <code>${u.id}</code> ${u.hasVerifiedBadge ? '✅' : ''}</li>`;
+            });
+            html += '</ul>';
+            resultDiv.innerHTML = html;
+          } else {
+            resultDiv.innerHTML = '📭 Ничего не найдено.';
+          }
+        } catch {
+          // Если PHP выдал ошибку (например, Fatal error), покажем как текст
+          resultDiv.innerHTML = `<pre style="color:red; white-space:pre-wrap">${text}</pre>`;
+        }
+      } catch (err) {
+        resultDiv.innerHTML = `<span class="error">❌ Ошибка: ${err.message}</span>`;
+      }
+    });
+  </script>
+</body>
+</html>
